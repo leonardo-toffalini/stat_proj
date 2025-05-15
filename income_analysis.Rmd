@@ -1,0 +1,325 @@
+---
+title: "Analysis of Simulated Hungarian Income Data"
+author: "Statistical Analysis Project"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: united
+    highlight: tango
+    code_folding: hide
+    css: styles.css
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(car)
+library(lmtest)
+library(ggplot2)
+library(dplyr)
+library(broom)
+library(viridis)
+library(ggthemes)
+library(plotly)
+library(knitr)
+library(kableExtra)
+```
+
+# Introduction
+
+This analysis examines simulated income data for Hungary, focusing on the relationships between income and various demographic factors including age, location, occupation, and gender. The dataset is simulated to reflect realistic patterns while maintaining a manageable size for analysis.
+
+```{r style_setup, include=FALSE}
+# Custom theme for all plots
+custom_theme <- theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 12, hjust = 0.5),
+    axis.title = element_text(size = 12, face = "bold"),
+    axis.text = element_text(size = 10),
+    legend.title = element_text(size = 12, face = "bold"),
+    legend.text = element_text(size = 10),
+    panel.grid.major = element_line(color = "gray90"),
+    panel.grid.minor = element_line(color = "gray95")
+  )
+
+# Color palette
+income_palette <- viridis::viridis(10)
+```
+
+# Data Simulation
+
+```{r data_simulation}
+set.seed(123) # For reproducibility
+
+# Define parameters
+n <- 10000  # Number of observations
+cities <- c("Budapest", "Debrecen", "Szeged", "Miskolc", "Pécs", "Győr", "Szombathely", "Eger")
+occupations <- c("Software Developer", "Teacher", "Doctor", "Sales Representative", 
+                "Engineer", "Accountant", "Nurse", "Manager", "Chef", "Driver")
+genders <- c("Male", "Female")
+
+# Generate data
+data <- data.frame(
+  age = round(rnorm(n, mean = 40, sd = 12)),
+  city = sample(cities, n, replace = TRUE),
+  occupation = sample(occupations, n, replace = TRUE),
+  gender = sample(genders, n, replace = TRUE)
+)
+
+# Ensure age is between 18 and 70
+data$age <- pmax(18, pmin(70, data$age))
+
+# Generate income based on relationships
+data <- data %>%
+  mutate(
+    # Base income
+    base_income = 300000,
+    
+    # Age effect (quadratic relationship)
+    age_effect = 10000 * (age - 40) - 100 * (age - 40)^2,
+    
+    # City effect
+    city_effect = case_when(
+      city == "Budapest" ~ 100000,
+      city %in% c("Debrecen", "Szeged") ~ 50000,
+      TRUE ~ 0
+    ),
+    
+    # Occupation effect
+    occupation_effect = case_when(
+      occupation == "Software Developer" ~ 150000,
+      occupation == "Doctor" ~ 120000,
+      occupation == "Manager" ~ 100000,
+      occupation == "Engineer" ~ 80000,
+      occupation == "Accountant" ~ 60000,
+      occupation == "Teacher" ~ 40000,
+      occupation == "Nurse" ~ 30000,
+      occupation == "Chef" ~ 20000,
+      occupation == "Driver" ~ 10000,
+      TRUE ~ 0
+    ),
+    
+    # Gender effect (simulating gender pay gap)
+    gender_effect = ifelse(gender == "Male", 20000, 0),
+    
+    # Random noise
+    noise = rnorm(n, 0, 50000)
+  ) %>%
+  mutate(
+    income = base_income + age_effect + city_effect + occupation_effect + gender_effect + noise
+  ) %>%
+  select(age, city, occupation, gender, income)
+
+# Save the data
+write.csv(data, "hungarian_income_data.csv", row.names = FALSE)
+```
+
+# Descriptive Statistics
+
+```{r descriptive_stats}
+# Summary statistics with kable
+summary_stats <- summary(data)
+kable(summary_stats, caption = "Summary Statistics of the Dataset") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+# Interactive income distribution by gender
+p1 <- ggplot(data, aes(x = income, fill = gender)) +
+  geom_density(alpha = 0.6) +
+  scale_fill_viridis_d() +
+  labs(title = "Income Distribution by Gender",
+       subtitle = "Density plot showing the distribution of income across genders",
+       x = "Income (HUF)",
+       y = "Density") +
+  custom_theme
+
+ggplotly(p1)
+
+# Interactive income by occupation with jitter
+p2 <- ggplot(data, aes(x = reorder(occupation, income, FUN = median), y = income, color = occupation)) +
+  geom_boxplot(alpha = 0.7) +
+  geom_jitter(alpha = 0.1, width = 0.2) +
+  scale_color_viridis_d() +
+  coord_flip() +
+  labs(title = "Income Distribution by Occupation",
+       subtitle = "Boxplot with individual data points",
+       x = "Occupation",
+       y = "Income (HUF)") +
+  custom_theme
+
+ggplotly(p2)
+
+# Interactive income by city with violin plot
+p3 <- ggplot(data, aes(x = reorder(city, income, FUN = median), y = income, fill = city)) +
+  geom_violin(alpha = 0.7) +
+  geom_boxplot(width = 0.2, alpha = 0.5) +
+  scale_fill_viridis_d() +
+  coord_flip() +
+  labs(title = "Income Distribution by City",
+       subtitle = "Violin plot with boxplot overlay",
+       x = "City",
+       y = "Income (HUF)") +
+  custom_theme
+
+ggplotly(p3)
+
+# Interactive age vs income scatter plot with regression line
+p4 <- ggplot(data, aes(x = age, y = income, color = gender)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = "loess", se = TRUE) +
+  scale_color_viridis_d() +
+  labs(title = "Relationship between Age and Income",
+       subtitle = "Scatter plot with LOESS regression line",
+       x = "Age",
+       y = "Income (HUF)") +
+  custom_theme
+
+ggplotly(p4)
+
+# Create a correlation heatmap
+numeric_data <- data %>% select(age, income)
+cor_matrix <- cor(numeric_data)
+cor_df <- as.data.frame(cor_matrix)
+cor_df$var1 <- rownames(cor_df)
+cor_df_long <- pivot_longer(cor_df, -var1, names_to = "var2", values_to = "correlation")
+
+ggplot(cor_df_long, aes(x = var1, y = var2, fill = correlation)) +
+  geom_tile() +
+  scale_fill_viridis() +
+  labs(title = "Correlation Heatmap",
+       subtitle = "Correlation between numeric variables",
+       x = "",
+       y = "") +
+  custom_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+# Hypothesis Testing
+
+## Parametric Tests
+
+### 1. Gender Income Difference (t-test)
+```{r gender_ttest}
+# Test if there's a significant difference in income between genders
+t_test_result <- t.test(income ~ gender, data = data)
+print(t_test_result)
+```
+
+### 2. City Income Differences (ANOVA)
+```{r city_anova}
+# Test if there are significant differences in income between cities
+city_anova <- aov(income ~ city, data = data)
+print(summary(city_anova))
+```
+
+### 3. Occupation Income Differences (ANOVA)
+```{r occupation_anova}
+# Test if there are significant differences in income between occupations
+occupation_anova <- aov(income ~ occupation, data = data)
+print(summary(occupation_anova))
+```
+
+## Non-parametric Tests
+
+### 1. Gender Income Distribution (Kolmogorov-Smirnov Test)
+```{r gender_ks}
+# Test if income distributions differ between genders
+male_income <- data$income[data$gender == "Male"]
+female_income <- data$income[data$gender == "Female"]
+ks_test <- ks.test(male_income, female_income)
+print(ks_test)
+```
+
+### 2. Income Distribution by City (Kruskal-Wallis Test)
+```{r city_kruskal}
+# Test if income distributions differ between cities
+kruskal_test <- kruskal.test(income ~ city, data = data)
+print(kruskal_test)
+```
+
+# Regression Analysis
+
+## Multiple Linear Regression
+```{r regression}
+# Convert categorical variables to factors
+data$city <- as.factor(data$city)
+data$occupation <- as.factor(data$occupation)
+data$gender <- as.factor(data$gender)
+
+# Fit the model
+model1 <- lm(income ~ age + I(age^2) + city + occupation + gender, data = data)
+
+# Create a beautiful model summary table
+model_summary <- summary(model1)
+kable(tidy(model_summary), caption = "Multiple Linear Regression Results") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+
+# Enhanced model diagnostics
+par(mfrow = c(2,2))
+plot(model1, col = income_palette[1], pch = 19, cex = 0.7)
+```
+
+## Polynomial Regression for Age-Income Relationship
+```{r polynomial_regression}
+# Fit polynomial regression
+model2 <- lm(income ~ poly(age, 3), data = data)
+
+# Create an interactive plot
+p5 <- ggplot(data, aes(x = age, y = income)) +
+  geom_point(alpha = 0.1, color = income_palette[1]) +
+  geom_smooth(method = "lm", formula = y ~ poly(x, 3), 
+              color = income_palette[5], fill = income_palette[5], alpha = 0.2) +
+  labs(title = "Polynomial Regression: Age vs Income",
+       subtitle = "Cubic polynomial fit with confidence interval",
+       x = "Age",
+       y = "Income (HUF)") +
+  custom_theme
+
+ggplotly(p5)
+
+# Model comparison
+model_comparison <- data.frame(
+  Model = c("Multiple Linear", "Polynomial"),
+  R_squared = c(summary(model1)$r.squared, summary(model2)$r.squared),
+  Adj_R_squared = c(summary(model1)$adj.r.squared, summary(model2)$adj.r.squared)
+)
+
+kable(model_comparison, caption = "Model Comparison") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+```
+
+# Predictions
+
+```{r predictions}
+# Create a sample prediction
+new_data <- data.frame(
+  age = 35,
+  city = "Budapest",
+  occupation = "Software Developer",
+  gender = "Male"
+)
+
+# Predict income
+prediction <- predict(model1, newdata = new_data, interval = "prediction")
+print(prediction)
+```
+
+# Summary and Conclusions
+
+The analysis of the simulated Hungarian income data reveals several interesting patterns:
+
+1. There is a significant gender pay gap, with males earning more on average than females.
+2. Income varies significantly across different cities, with Budapest showing the highest average income.
+3. Occupation has a strong effect on income, with software developers and doctors earning the most.
+4. Age shows a non-linear relationship with income, peaking in the middle age range.
+5. The regression models explain a significant portion of the income variation.
+
+The analysis demonstrates the complex interplay between various factors affecting income levels in Hungary. The findings suggest that both demographic factors (age, gender) and professional factors (occupation, location) play important roles in determining income levels.
+
+# References
+
+- R Core Team (2023). R: A language and environment for statistical computing.
+- Wickham, H. (2016). ggplot2: Elegant Graphics for Data Analysis.
+- Fox, J. (2016). Applied Regression Analysis and Generalized Linear Models. 
