@@ -124,6 +124,14 @@ ggplot(dem_pyramid, aes(x = age_group, y = count, fill = gender)) +
 
 # Data Preprocessing
 
+We employ two steps to clean the data: inter quartile range (IQR) outlier detection, and clustering.
+
+We use IQR outlier detection to reduce the noise of the data.
+
+We employ K-Means clustering to find the three major demographics groups: unemployed/young, working age, retired.
+
+After cleaning the data and finding the three demographic groups, we solely focus on the middle cluster, the working age people, as this study aims to analyze the income of the Hungarian population and it would be nonsensical to analyze unemployed people or retired people as if their pension was a salary.
+
 ```{r data_preprocessing}
 detect_outliers <- function(x) {
   q1 <- quantile(x, 0.25)
@@ -179,6 +187,10 @@ kable(summary_stats, caption = "Summary Statistics of the Dataset (Outliers Remo
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
 ```
 
+By the following income distribution plot, we can clearly see that on average a man has a higher income than a woman.
+This does not yet mean that given equal positions a man earns more money.
+However, it is indicative that we should further analyze this aspect of the data.
+
 ```{r income_distribution_by_gender}
 ggplot(data %>% filter(age >= 18), aes(x = income, fill = gender)) +
   geom_density(alpha = 0.6) +
@@ -191,6 +203,10 @@ ggplot(data %>% filter(age >= 18), aes(x = income, fill = gender)) +
 
 ```
 
+The following plot shows how the income is distributed against the age.
+An important thing to note is that as a person ages, their income increase.
+However it plateaus after a point, moreover, it even decreases in certain cases.
+
 ```{r income_distribution_by_age}
 ggplot(data, aes(x = age, y = income, color = gender)) +
   geom_point(alpha = 0.1, width = 0.2) +
@@ -202,6 +218,9 @@ ggplot(data, aes(x = age, y = income, color = gender)) +
   custom_theme
 
 ```
+
+To get a better grasp of how the income distribution is made up, we can split the data by occupation, giving us a new perspective into how certain occupation are more handsomely rewarded.
+We can see that Software Developers and Doctors have the highest income, compared to Sales Representatives who earn a lower income.
 
 ```{r income_distribution_by_occupation}
 ggplot(data %>% filter(age >= 18), aes(x = reorder(occupation, income, FUN = median), y = income, color = occupation)) +
@@ -216,6 +235,10 @@ ggplot(data %>% filter(age >= 18), aes(x = reorder(occupation, income, FUN = med
   custom_theme
 
 ```
+
+The following plot, like the one before, split the data.
+However, now we are analyzing how the city in which the person works at contributes to their salary.
+It is hard not to notice that the average person working in the capital, Budapest, enjoys a higher income compared to other cities.
 
 ```{r income_distribution_by_city}
 ggplot(data %>% filter(age >= 18), aes(x = reorder(city, income, FUN = median), y = income, fill = city)) +
@@ -383,6 +406,8 @@ kable(model_comparison, caption = "Model Comparison (Working Age Only)") %>%
 
 # Predictions
 
+What is the predicted income of a 35 years old male software developer working in Budapest?
+
 ```{r predictions}
 # Create a sample prediction
 new_data <- data.frame(
@@ -394,7 +419,7 @@ new_data <- data.frame(
 
 # Predict income
 prediction <- predict(model1, newdata = new_data, interval = "prediction")
-print(prediction)
+print(prediction[1])
 ```
 
 # Summary and Conclusions
