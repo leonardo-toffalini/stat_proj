@@ -90,6 +90,38 @@ Important things to note about the generated data:
 source("data_simulation.R")
 ```
 
+# Demographics Analysis
+
+```{r demographics, fig.height=12}
+library(forcats)
+
+data <- data %>%
+  mutate(age_group = cut(age, 
+                        breaks = seq(0, 100, by = 2), 
+                        right = FALSE, 
+                        include.lowest = TRUE, 
+                        labels = seq(0, 98, by = 2)))
+
+dem_pyramid <- data %>%
+  group_by(age_group, gender) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  mutate(count = ifelse(gender == "Male", -count, count))
+
+ggplot(dem_pyramid, aes(x = age_group, y = count, fill = gender)) +
+  geom_bar(stat = "identity", width = 0.8, color = "black") +
+  scale_y_continuous(labels = abs, expand = expansion(mult = c(0.05, 0.05))) +
+  scale_fill_manual(values = c("Male" = "#00BFFF", "Female" = "#FF3B3B")) +
+  coord_flip() +
+  labs(title = "Population Pyramid of Simulated Hungarian Data",
+       x = "Age Group",
+       y = "Count",
+       fill = "Gender") +
+  custom_theme +
+  theme(legend.position = "top",
+        axis.text.y = element_text(size = 10, face = "bold"),
+        plot.margin = margin(t = 20, r = 20, b = 20, l = 20))
+```
+
 # Data Preprocessing
 
 ```{r data_preprocessing}
@@ -122,7 +154,7 @@ cluster_summary <- data_clean %>%
   ) %>%
   arrange(mean_income)
 
-cluster_labels <- c("Unemployed/Young", "Working Age", "Pension Age")
+cluster_labels <- c("Working Age", "Pension Age", "Unemployed/Young")
 data_clean$income_group <- factor(data_clean$cluster, 
                                  labels = cluster_labels[order(cluster_summary$mean_income)])
 
@@ -135,7 +167,8 @@ ggplot(data_clean, aes(x = age, y = income, color = income_group)) +
        color = "Income Group") +
   custom_theme
 
-data <- data_clean
+data <- data_clean %>%
+  filter(income_group == "Working Age")
 ```
 
 # Descriptive Statistics
@@ -144,55 +177,6 @@ data <- data_clean
 summary_stats <- summary(data)
 kable(summary_stats, caption = "Summary Statistics of the Dataset (Outliers Removed)") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
-```
-
-```{r data_simulation_summary}
-cat("\nCity Distribution:\n")
-print(table(data$city))
-cat("\nOccupation Distribution:\n")
-print(table(data$occupation))
-cat("\nAge Distribution Summary:\n")
-print(summary(data$age))
-cat("\nRetirement Age Distribution:\n")
-print(table(data$retirement_age))
-cat("\nAge Group Distribution:\n")
-print(table(cut(data$age, breaks = c(0, 15, 65, Inf), labels = c("0-14", "15-64", "65+"))))
-cat("\nIncome Distribution Summary:\n")
-print(summary(data$income))
-cat("\nIncome Distribution by Age Group:\n")
-print(tapply(data$income, cut(data$age, breaks = c(0, 18, 65, Inf), labels = c("Under 18", "Working Age", "Pension Age")), summary)) 
-```
-
-# Demographics Analysis
-
-```{r demographics, fig.height=12}
-library(forcats)
-
-data <- data %>%
-  mutate(age_group = cut(age, 
-                        breaks = seq(0, 100, by = 2), 
-                        right = FALSE, 
-                        include.lowest = TRUE, 
-                        labels = seq(0, 98, by = 2)))
-
-dem_pyramid <- data %>%
-  group_by(age_group, gender) %>%
-  summarise(count = n(), .groups = 'drop') %>%
-  mutate(count = ifelse(gender == "Male", -count, count))
-
-ggplot(dem_pyramid, aes(x = age_group, y = count, fill = gender)) +
-  geom_bar(stat = "identity", width = 0.8, color = "black") +
-  scale_y_continuous(labels = abs, expand = expansion(mult = c(0.05, 0.05))) +
-  scale_fill_manual(values = c("Male" = "#00BFFF", "Female" = "#FF3B3B")) +
-  coord_flip() +
-  labs(title = "Population Pyramid of Simulated Hungarian Data",
-       x = "Age Group",
-       y = "Count",
-       fill = "Gender") +
-  custom_theme +
-  theme(legend.position = "top",
-        axis.text.y = element_text(size = 10, face = "bold"),
-        plot.margin = margin(t = 20, r = 20, b = 20, l = 20))
 ```
 
 ```{r income_distribution_by_gender}

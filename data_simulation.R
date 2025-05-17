@@ -20,9 +20,8 @@ truncated_normal <- function(n, mean, sd, min, max) {
 
 generate_income_noise <- function(n) {
   base_noise <- rgamma(n, shape = 1.5, rate = 0.00005)
-  extreme_wealth <- ifelse(runif(n) < 0.01, rgamma(n, shape = 3, rate = 0.00001) * 3, 0)
   negative_noise <- -rgamma(n, shape = 1, rate = 0.0002)
-  noise <- base_noise + extreme_wealth + ifelse(runif(n) < 0.3, negative_noise, 0)
+  noise <- base_noise + ifelse(runif(n) < 0.3, negative_noise, 0)
   return(noise - mean(noise))
 }
 
