@@ -70,9 +70,9 @@ Important things to note about the generated data:
 
 -   There are three groups of people categorized by their age:
 
-    -   Underage: 0-18
+    -   Underage: each person has a random age at which they start working between 14 and 24.
 
-    -   Working age: 18-65
+    -   Working age: 19-67
 
     -   Pension age: each person has a random retirement age between 60 and 75.
 
@@ -90,11 +90,59 @@ Important things to note about the generated data:
 source("data_simulation.R")
 ```
 
+# Data Preprocessing
+
+```{r data_preprocessing}
+detect_outliers <- function(x) {
+  q1 <- quantile(x, 0.25)
+  q3 <- quantile(x, 0.75)
+  iqr <- q3 - q1
+  lower_bound <- q1 - 1.5 * iqr
+  upper_bound <- q3 + 1.5 * iqr
+  return(x < lower_bound | x > upper_bound)
+}
+
+outliers <- detect_outliers(data$income)
+data_clean <- data[!outliers, ]
+
+set.seed(42)
+income_age_matrix <- data_clean %>%
+  select(income, age) %>%
+  scale()
+
+kmeans_result <- kmeans(income_age_matrix, centers = 3, nstart = 25)
+
+data_clean$cluster <- kmeans_result$cluster
+
+cluster_summary <- data_clean %>%
+  group_by(cluster) %>%
+  summarise(
+    mean_income = mean(income),
+    .groups = 'drop'
+  ) %>%
+  arrange(mean_income)
+
+cluster_labels <- c("Unemployed/Young", "Working Age", "Pension Age")
+data_clean$income_group <- factor(data_clean$cluster, 
+                                 labels = cluster_labels[order(cluster_summary$mean_income)])
+
+ggplot(data_clean, aes(x = age, y = income, color = income_group)) +
+  geom_point(alpha = 0.5) +
+  scale_color_viridis_d() +
+  labs(title = "Age vs Income by Cluster",
+       x = "Age",
+       y = "Income (HUF)",
+       color = "Income Group") +
+  custom_theme
+
+data <- data_clean
+```
+
 # Descriptive Statistics
 
 ```{r descriptive_stats}
 summary_stats <- summary(data)
-kable(summary_stats, caption = "Summary Statistics of the Dataset") %>%
+kable(summary_stats, caption = "Summary Statistics of the Dataset (Outliers Removed)") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
 ```
 
