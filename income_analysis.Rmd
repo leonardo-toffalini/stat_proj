@@ -88,7 +88,6 @@ ggplot(dem_pyramid, aes(x = age_group, y = count, fill = gender)) +
   scale_fill_manual(values = c("Male" = "#00BFFF", "Female" = "#FF3B3B")) +
   coord_flip() +
   labs(title = "Population Pyramid of Simulated Hungarian Data",
-       subtitle = "Age and gender distribution (2-year bins)",
        x = "Age Group",
        y = "Count",
        fill = "Gender") +
@@ -99,12 +98,12 @@ ggplot(dem_pyramid, aes(x = age_group, y = count, fill = gender)) +
 ```
 
 ```{r income_distribution_by_gender}
-# Income distribution by gender
-ggplot(data, aes(x = income, fill = gender)) +
+# Income distribution by gender (working age only)
+ggplot(data %>% filter(age >= 18), aes(x = income, fill = gender)) +
   geom_density(alpha = 0.6) +
   scale_fill_viridis_d() +
   labs(title = "Income Distribution by Gender",
-       subtitle = "Density plot showing the distribution of income across genders",
+       subtitle = "(working age only)",
        x = "Income (HUF)",
        y = "Density") +
   custom_theme
@@ -112,14 +111,14 @@ ggplot(data, aes(x = income, fill = gender)) +
 ```
 
 ```{r income_distribution_by_occupation}
-# Income by occupation with jitter
-ggplot(data, aes(x = reorder(occupation, income, FUN = median), y = income, color = occupation)) +
+# Income by occupation with jitter (working age only)
+ggplot(data %>% filter(age >= 18), aes(x = reorder(occupation, income, FUN = median), y = income, color = occupation)) +
   geom_boxplot(alpha = 0.7) +
   geom_jitter(alpha = 0.1, width = 0.2) +
   scale_color_viridis_d() +
   coord_flip() +
   labs(title = "Income Distribution by Occupation",
-       subtitle = "Boxplot with individual data points",
+       subtitle = "(working age only)",
        x = "Occupation",
        y = "Income (HUF)") +
   custom_theme
@@ -127,14 +126,14 @@ ggplot(data, aes(x = reorder(occupation, income, FUN = median), y = income, colo
 ```
 
 ```{r income_distribution_by_city}
-# Income by city with violin plot
-ggplot(data, aes(x = reorder(city, income, FUN = median), y = income, fill = city)) +
+# Income by city with violin plot (working age only)
+ggplot(data %>% filter(age >= 18), aes(x = reorder(city, income, FUN = median), y = income, fill = city)) +
   geom_violin(alpha = 0.7) +
   geom_boxplot(width = 0.2, alpha = 0.5) +
   scale_fill_viridis_d() +
   coord_flip() +
   labs(title = "Income Distribution by City",
-       subtitle = "Violin plot with boxplot overlay",
+       subtitle = "(working age only)",
        x = "City",
        y = "Income (HUF)") +
   custom_theme
@@ -142,13 +141,13 @@ ggplot(data, aes(x = reorder(city, income, FUN = median), y = income, fill = cit
 ```
 
 ```{r age_income_scatter}
-# Age vs income scatter plot with regression line
-ggplot(data, aes(x = age, y = income, color = gender)) +
+# Age vs income scatter plot with regression line (working age only)
+ggplot(data %>% filter(age >= 18), aes(x = age, y = income, color = gender)) +
   geom_point(alpha = 0.3) +
   geom_smooth(method = "loess", se = TRUE) +
   scale_color_viridis_d() +
   labs(title = "Relationship between Age and Income",
-       subtitle = "Scatter plot with LOESS regression line",
+       subtitle = "(working age only)",
        x = "Age",
        y = "Income (HUF)") +
   custom_theme
@@ -156,7 +155,9 @@ ggplot(data, aes(x = age, y = income, color = gender)) +
 ```
 
 ```{r income_by_category}
+# Calculate mean income by category (working age only)
 income_by_category <- data %>%
+  filter(age >= 18) %>%
   group_by(occupation, city, gender) %>%
   summarise(
     mean_income = mean(income),
@@ -171,15 +172,16 @@ ggplot(income_by_category, aes(x = city, y = occupation, fill = mean_income)) +
   scale_fill_viridis(name = "Mean Income (HUF)") +
   facet_wrap(~gender) +
   labs(title = "Mean Income by Occupation, City, and Gender",
-       subtitle = "Darker colors indicate higher mean income",
+       subtitle = "(working age only)",
        x = "City",
        y = "Occupation") +
   custom_theme +
   theme(axis.text.x = element_text(angle = 45, hjust = 1),
         strip.text = element_text(face = "bold"))
 ```
+
 ```{r top_earners}
-# Create a summary table of the top 10 highest earning combinations
+# Create a summary table of the top 10 highest earning combinations (working age only)
 top_earners <- income_by_category %>%
   arrange(desc(mean_income)) %>%
   head(10)
@@ -187,7 +189,7 @@ top_earners <- income_by_category %>%
 kable(top_earners, 
       caption = "Top 10 Highest Earning Combinations",
       digits = 0) %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
                 full_width = FALSE)
 ```
 
