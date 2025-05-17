@@ -99,7 +99,7 @@ ggplot(dem_pyramid, aes(x = age_group, y = count, fill = gender)) +
 
 ```{r income_distribution_by_gender}
 # Income distribution by gender (working age only)
-ggplot(data %>% filter(age >= 18), aes(x = income, fill = gender)) +
+ggplot(data %>% filter(age <= 70 & age >= 18), aes(x = income, fill = gender)) +
   geom_density(alpha = 0.6) +
   scale_fill_viridis_d() +
   labs(title = "Income Distribution by Gender",
@@ -112,7 +112,7 @@ ggplot(data %>% filter(age >= 18), aes(x = income, fill = gender)) +
 
 ```{r income_distribution_by_occupation}
 # Income by occupation with jitter (working age only)
-ggplot(data %>% filter(age >= 18), aes(x = reorder(occupation, income, FUN = median), y = income, color = occupation)) +
+ggplot(data %>% filter(age <= 70 & age >= 18), aes(x = reorder(occupation, income, FUN = median), y = income, color = occupation)) +
   geom_boxplot(alpha = 0.7) +
   geom_jitter(alpha = 0.1, width = 0.2) +
   scale_color_viridis_d() +
@@ -127,7 +127,7 @@ ggplot(data %>% filter(age >= 18), aes(x = reorder(occupation, income, FUN = med
 
 ```{r income_distribution_by_city}
 # Income by city with violin plot (working age only)
-ggplot(data %>% filter(age >= 18), aes(x = reorder(city, income, FUN = median), y = income, fill = city)) +
+ggplot(data %>% filter(age <= 70 & age >= 18), aes(x = reorder(city, income, FUN = median), y = income, fill = city)) +
   geom_violin(alpha = 0.7) +
   geom_boxplot(width = 0.2, alpha = 0.5) +
   scale_fill_viridis_d() +
@@ -142,7 +142,7 @@ ggplot(data %>% filter(age >= 18), aes(x = reorder(city, income, FUN = median), 
 
 ```{r age_income_scatter}
 # Age vs income scatter plot with regression line (working age only)
-ggplot(data %>% filter(age >= 18), aes(x = age, y = income, color = gender)) +
+ggplot(data %>% filter(age <= 70 & age >= 18), aes(x = age, y = income, color = gender)) +
   geom_point(alpha = 0.3) +
   geom_smooth(method = "loess", se = TRUE) +
   scale_color_viridis_d() +
@@ -157,7 +157,7 @@ ggplot(data %>% filter(age >= 18), aes(x = age, y = income, color = gender)) +
 ```{r income_by_category}
 # Calculate mean income by category (working age only)
 income_by_category <- data %>%
-  filter(age >= 18) %>%
+  filter(age <= 70 & age >= 18) %>%
   group_by(occupation, city, gender) %>%
   summarise(
     mean_income = mean(income),
@@ -241,16 +241,17 @@ print(kruskal_test)
 ## Multiple Linear Regression
 ```{r regression}
 # Convert categorical variables to factors
-data$city <- as.factor(data$city)
-data$occupation <- as.factor(data$occupation)
-data$gender <- as.factor(data$gender)
+data_working_age <- data %>% filter(age <= 70 & age >= 18)
+data_working_age$city <- as.factor(data_working_age$city)
+data_working_age$occupation <- as.factor(data_working_age$occupation)
+data_working_age$gender <- as.factor(data_working_age$gender)
 
 # Fit the model
-model1 <- lm(income ~ age + I(age^2) + city + occupation + gender, data = data)
+model1 <- lm(income ~ age + I(age^2) + city + occupation + gender, data = data_working_age)
 
 # Create a beautiful model summary table
 model_summary <- summary(model1)
-kable(tidy(model_summary), caption = "Multiple Linear Regression Results") %>%
+kable(tidy(model_summary), caption = "Multiple Linear Regression Results (Working Age Only)") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
 
 # Enhanced model diagnostics
@@ -261,15 +262,15 @@ plot(model1, col = income_palette[1], pch = 19, cex = 0.7)
 ## Polynomial Regression for Age-Income Relationship
 ```{r polynomial_regression}
 # Fit polynomial regression
-model2 <- lm(income ~ poly(age, 3), data = data)
+model2 <- lm(income ~ poly(age, 3), data = data_working_age)
 
 # Create a static plot
-ggplot(data, aes(x = age, y = income)) +
+ggplot(data_working_age, aes(x = age, y = income)) +
   geom_point(alpha = 0.1, color = income_palette[1]) +
   geom_smooth(method = "lm", formula = y ~ poly(x, 3), 
               color = income_palette[5], fill = income_palette[5], alpha = 0.2) +
   labs(title = "Polynomial Regression: Age vs Income",
-       subtitle = "Cubic polynomial fit with confidence interval",
+       subtitle = "Cubic polynomial fit with confidence interval (Working Age Only)",
        x = "Age",
        y = "Income (HUF)") +
   custom_theme
@@ -281,7 +282,7 @@ model_comparison <- data.frame(
   Adj_R_squared = c(summary(model1)$adj.r.squared, summary(model2)$adj.r.squared)
 )
 
-kable(model_comparison, caption = "Model Comparison") %>%
+kable(model_comparison, caption = "Model Comparison (Working Age Only)") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
 ```
 
