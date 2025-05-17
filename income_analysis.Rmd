@@ -346,7 +346,6 @@ ggplot(data, aes(x = city, fill = income_category)) +
        x = "City",
        y = "Proportion",
        fill = "Income Category") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   custom_theme
 ```
 
@@ -379,7 +378,6 @@ ggplot(data, aes(x = occupation, fill = income_category)) +
        x = "Occupation",
        y = "Proportion",
        fill = "Income Category") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   custom_theme
 ```
 
