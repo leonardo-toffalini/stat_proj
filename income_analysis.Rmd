@@ -254,19 +254,6 @@ ggplot(data %>% filter(age >= 18), aes(x = reorder(city, income, FUN = median), 
 
 ```
 
-```{r age_income_scatter}
-ggplot(data %>% filter(age >= 18), aes(x = age, y = income, color = gender)) +
-  geom_point(alpha = 0.3) +
-  geom_smooth(method = "loess", se = TRUE) +
-  scale_color_viridis_d() +
-  labs(title = "Relationship between Age and Income",
-       subtitle = "(working age only)",
-       x = "Age",
-       y = "Income (HUF)") +
-  custom_theme
-
-```
-
 ```{r income_by_category}
 income_by_category <- data %>%
   filter(age >= 18) %>%
@@ -310,11 +297,25 @@ kable(top_earners,
 
 ### 1. Gender Income Difference (t-test)
 
+Previously we have seen from a plot that a man on averages is payed more than a woman.
+To test this result we propose a two sample t-test (assuming that both samples come from a normal distribution), where our nulhypothesisis that the mean male income is equal to the mean female income.
+Before employing a two sample t-test we must first investigate if the variance of the two samples differ significantly, for such we use an F-test.
+
+```{r gender_ftest}
+f_test_result <- var.test(income ~ gender, data = data)
+print(f_test_result)
+```
+
+Given the above results we accept that the variance of the two samples are equal, because we did not find significant proof to state that the variances differ.
+Thus, we proceed our investigation with the assumption that the variance of the distributions from which the two samples are drown from are equal.
+
 ```{r gender_ttest}
 # Test if there's a significant difference in income between genders
-t_test_result <- t.test(income ~ gender, data = data)
+t_test_result <- t.test(income ~ gender, data = data, alternative="less", var.equal=T)
 print(t_test_result)
 ```
+
+The above results show that the p-value is way below our target of $0.05$, which means we can state with outmost certainty that we found significant proof that the mean income in the female group is less than the mean income in the male group.
 
 ### 2. City Income Differences (ANOVA)
 
@@ -353,6 +354,21 @@ print(kruskal_test)
 ```
 
 # Regression Analysis
+
+## Age vs Income
+
+```{r age_income_scatter}
+ggplot(data %>% filter(age >= 18), aes(x = age, y = income, color = gender)) +
+  geom_point(alpha = 0.3) +
+  geom_smooth(method = "loess", se = TRUE) +
+  scale_color_viridis_d() +
+  labs(title = "Relationship between Age and Income",
+       subtitle = "(working age only)",
+       x = "Age",
+       y = "Income (HUF)") +
+  custom_theme
+
+```
 
 ## Multiple Linear Regression
 
