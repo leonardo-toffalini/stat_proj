@@ -311,7 +311,7 @@ Thus, we proceed our investigation with the assumption that the variance of the 
 
 ```{r gender_ttest}
 # Test if there's a significant difference in income between genders
-t_test_result <- t.test(income ~ gender, data = data, alternative="less", var.equal=T)
+t_test_result <- t.test(income ~ gender, data = data, alternative="less", var.equal=TRUE)
 print(t_test_result)
 ```
 
@@ -332,6 +332,57 @@ print(summary(city_anova))
 occupation_anova <- aov(income ~ occupation, data = data)
 print(summary(occupation_anova))
 ```
+
+### 4. Chi-Squared Tests for Income Distribution
+
+```{r chi_squared_test_city}
+data <- data %>%
+  mutate(income_category = cut(income,
+                              breaks = quantile(income, probs = seq(0, 1, 0.25)),
+                              labels = c("Low", "Medium-Low", "Medium-High", "High"),
+                              include.lowest = TRUE))
+
+# Chi-squared test for cities
+city_chi <- chisq.test(table(data$city, data$income_category))
+print(city_chi)
+
+```
+
+```{r chi_squared_test_occupation}
+occupation_chi <- chisq.test(table(data$occupation, data$income_category))
+print(occupation_chi)
+```
+
+```{r plot_income_distribution_by_city}
+ggplot(data, aes(x = city, fill = income_category)) +
+  geom_bar(position = "fill") +
+  scale_fill_viridis_d() +
+  labs(title = "Income Distribution by City",
+       x = "City",
+       y = "Proportion",
+       fill = "Income Category") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  custom_theme
+```
+
+```{r plot_income_distribution_by_occupation}
+ggplot(data, aes(x = occupation, fill = income_category)) +
+  geom_bar(position = "fill") +
+  scale_fill_viridis_d() +
+  labs(title = "Income Distribution by Occupation",
+       x = "Occupation",
+       y = "Proportion",
+       fill = "Income Category") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  custom_theme
+```
+
+The chi-squared tests help us determine if there's a significant relationship between: 1.
+Cities and income categories 2.
+Occupations and income categories
+
+The tests will show if the distribution of income categories is independent of city/occupation or if there's a significant association.
+The visualizations help us understand the nature of these relationships by showing the proportion of each income category within each city and occupation.
 
 ## Non-parametric Tests
 
