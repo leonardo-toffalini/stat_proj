@@ -317,23 +317,13 @@ print(t_test_result)
 
 The above results show that the p-value is way below our target of $0.05$, which means we can state with outmost certainty that we found significant proof that the mean income in the female group is less than the mean income in the male group.
 
-### 2. City Income Differences (ANOVA)
+### 2. Chi-Squared Test for Income Distribution by City
 
-```{r city_anova}
-# Test if there are significant differences in income between cities
-city_anova <- aov(income ~ city, data = data)
-print(summary(city_anova))
-```
-
-### 3. Occupation Income Differences (ANOVA)
-
-```{r occupation_anova}
-# Test if there are significant differences in income between occupations
-occupation_anova <- aov(income ~ occupation, data = data)
-print(summary(occupation_anova))
-```
-
-### 4. Chi-Squared Tests for Income Distribution
+To investigate if there is a significant difference in income between cities we employ a chi-squared test.
+We first create income categories based on the quantiles of the income distribution: Low (0-25%), Medium-Low (25-50%), Medium-High (50-75%), High (75-100%).
+Then we apply the chi-squared test to the data.
+The test will show if the distribution of income categories is independent of city or if there's a significant association.
+The visualizations help us understand the nature of these relationships by showing the proportion of each income category within each city.
 
 ```{r chi_squared_test_city}
 data <- data %>%
@@ -348,11 +338,6 @@ print(city_chi)
 
 ```
 
-```{r chi_squared_test_occupation}
-occupation_chi <- chisq.test(table(data$occupation, data$income_category))
-print(occupation_chi)
-```
-
 ```{r plot_income_distribution_by_city}
 ggplot(data, aes(x = city, fill = income_category)) +
   geom_bar(position = "fill") +
@@ -363,6 +348,27 @@ ggplot(data, aes(x = city, fill = income_category)) +
        fill = "Income Category") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   custom_theme
+```
+
+The chi-squared test results show a very strong relationship between city and income distribution (X-squared = 2624.1, p-value \< 2.2e-16).
+This extremely small p-value (less than 2.2e-16) indicates that we can reject the null hypothesis with very high confidence.
+In other words, there is a statistically significant association between the city where someone works and their income category.
+Looking at the visualization, we can observe that:
+
+1.  Budapest has a notably higher proportion of high-income earners compared to other cities
+
+2.  The distribution of income categories varies significantly across cities
+
+3.  This supports our earlier observations about the economic disparity between Budapest and other cities in Hungary
+
+### 3. Chi-Squared Test for Income Distribution by Occupation
+
+To further explore what the connection between income and occupation is, we employ a chi-squared test.
+Our null hypothesis is that the distribution of income categories is independent of occupation.
+
+```{r chi_squared_test_occupation}
+occupation_chi <- chisq.test(table(data$occupation, data$income_category))
+print(occupation_chi)
 ```
 
 ```{r plot_income_distribution_by_occupation}
@@ -377,12 +383,13 @@ ggplot(data, aes(x = occupation, fill = income_category)) +
   custom_theme
 ```
 
-The chi-squared tests help us determine if there's a significant relationship between: 1.
-Cities and income categories 2.
-Occupations and income categories
+The chi-squared test results show an extremely strong relationship between occupation and income distribution (X-squared = 2736.5, p-value \< 2.2e-16).
+This extremely small p-value indicates that we can reject the null hypothesis with very high confidence, meaning there is a statistically significant association between a person's occupation and their income category.
 
-The tests will show if the distribution of income categories is independent of city/occupation or if there's a significant association.
-The visualizations help us understand the nature of these relationships by showing the proportion of each income category within each city and occupation.
+Looking at the visualization, we can observe that: 1.
+Software Developers and Doctors have a much higher proportion of high-income earners compared to other occupations 2.
+Sales Representatives and Drivers tend to have a higher proportion of lower-income categories 3.
+The income distribution varies significantly across different occupations, highlighting the impact of career choice on earning potential
 
 ## Non-parametric Tests
 
@@ -488,16 +495,3 @@ new_data <- data.frame(
 prediction <- predict(model1, newdata = new_data, interval = "prediction")
 print(prediction[1])
 ```
-
-# Summary and Conclusions
-
-The analysis of the simulated Hungarian income data reveals several interesting patterns:
-
-1.  There is a significant gender pay gap, with males earning more on average than females.
-2.  Income varies significantly across different cities, with Budapest showing the highest average income.
-3.  Occupation has a strong effect on income, with software developers and doctors earning the most.
-4.  Age shows a non-linear relationship with income, peaking in the middle age range.
-5.  The regression models explain a significant portion of the income variation.
-
-The analysis demonstrates the complex interplay between various factors affecting income levels in Hungary.
-The findings suggest that both demographic factors (age, gender) and professional factors (occupation, location) play important roles in determining income levels.
