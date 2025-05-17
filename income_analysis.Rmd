@@ -22,7 +22,6 @@ library(dplyr)
 library(broom)
 library(viridis)
 library(ggthemes)
-library(plotly)
 library(knitr)
 library(kableExtra)
 ```
@@ -124,9 +123,40 @@ write.csv(data, "hungarian_income_data.csv", row.names = FALSE)
 summary_stats <- summary(data)
 kable(summary_stats, caption = "Summary Statistics of the Dataset") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
+```
+# Demographics Analysis
+```{r demographics}
+# Age bins for population pyramid
+library(forcats)
 
-# Interactive income distribution by gender
-p1 <- ggplot(data, aes(x = income, fill = gender)) +
+# Create 2-year age bins for detailed population pyramid
+data <- data %>%
+  mutate(age_group_2yr = cut(age, breaks = seq(18, 70, by = 2), right = FALSE, include.lowest = TRUE, 
+                            labels = paste(seq(18, 68, by = 2), seq(19, 69, by = 2), sep = "-")))
+
+# Prepare data for detailed pyramid
+dem_pyramid_2yr <- data %>%
+  group_by(age_group_2yr, gender) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  mutate(count = ifelse(gender == "Male", -count, count))
+
+# Plot detailed population pyramid
+ggplot(dem_pyramid_2yr, aes(x = fct_rev(age_group_2yr), y = count, fill = gender)) +
+  geom_bar(stat = "identity", width = 0.8, color = "black") +
+  scale_y_continuous(labels = abs, expand = expansion(mult = c(0.05, 0.05))) +
+  scale_fill_manual(values = c("Male" = "#00BFFF", "Female" = "#FF3B3B")) +
+  coord_flip() +
+  labs(title = "Population Pyramid of Simulated Hungarian Data",
+       subtitle = "Age and gender distribution (2-year bins)",
+       x = "Age Group",
+       y = "Count",
+       fill = "Gender") +
+  custom_theme +
+  theme(legend.position = "top",
+        axis.text.y = element_text(size = 10, face = "bold"))
+
+# Income distribution by gender
+ggplot(data, aes(x = income, fill = gender)) +
   geom_density(alpha = 0.6) +
   scale_fill_viridis_d() +
   labs(title = "Income Distribution by Gender",
@@ -135,10 +165,8 @@ p1 <- ggplot(data, aes(x = income, fill = gender)) +
        y = "Density") +
   custom_theme
 
-ggplotly(p1)
-
-# Interactive income by occupation with jitter
-p2 <- ggplot(data, aes(x = reorder(occupation, income, FUN = median), y = income, color = occupation)) +
+# Income by occupation with jitter
+ggplot(data, aes(x = reorder(occupation, income, FUN = median), y = income, color = occupation)) +
   geom_boxplot(alpha = 0.7) +
   geom_jitter(alpha = 0.1, width = 0.2) +
   scale_color_viridis_d() +
@@ -149,10 +177,8 @@ p2 <- ggplot(data, aes(x = reorder(occupation, income, FUN = median), y = income
        y = "Income (HUF)") +
   custom_theme
 
-ggplotly(p2)
-
-# Interactive income by city with violin plot
-p3 <- ggplot(data, aes(x = reorder(city, income, FUN = median), y = income, fill = city)) +
+# Income by city with violin plot
+ggplot(data, aes(x = reorder(city, income, FUN = median), y = income, fill = city)) +
   geom_violin(alpha = 0.7) +
   geom_boxplot(width = 0.2, alpha = 0.5) +
   scale_fill_viridis_d() +
@@ -163,10 +189,8 @@ p3 <- ggplot(data, aes(x = reorder(city, income, FUN = median), y = income, fill
        y = "Income (HUF)") +
   custom_theme
 
-ggplotly(p3)
-
-# Interactive age vs income scatter plot with regression line
-p4 <- ggplot(data, aes(x = age, y = income, color = gender)) +
+# Age vs income scatter plot with regression line
+ggplot(data, aes(x = age, y = income, color = gender)) +
   geom_point(alpha = 0.3) +
   geom_smooth(method = "loess", se = TRUE) +
   scale_color_viridis_d() +
@@ -176,24 +200,40 @@ p4 <- ggplot(data, aes(x = age, y = income, color = gender)) +
        y = "Income (HUF)") +
   custom_theme
 
-ggplotly(p4)
+# Create a more informative visualization of variable relationships
+# Calculate mean income by category
+income_by_category <- data %>%
+  group_by(occupation, city, gender) %>%
+  summarise(
+    mean_income = mean(income),
+    count = n(),
+    .groups = 'drop'
+  ) %>%
+  arrange(desc(mean_income))
 
-# Create a correlation heatmap
-numeric_data <- data %>% select(age, income)
-cor_matrix <- cor(numeric_data)
-cor_df <- as.data.frame(cor_matrix)
-cor_df$var1 <- rownames(cor_df)
-cor_df_long <- pivot_longer(cor_df, -var1, names_to = "var2", values_to = "correlation")
-
-ggplot(cor_df_long, aes(x = var1, y = var2, fill = correlation)) +
+# Create a heatmap of mean income by occupation and city
+ggplot(income_by_category, aes(x = city, y = occupation, fill = mean_income)) +
   geom_tile() +
-  scale_fill_viridis() +
-  labs(title = "Correlation Heatmap",
-       subtitle = "Correlation between numeric variables",
-       x = "",
-       y = "") +
+  scale_fill_viridis(name = "Mean Income (HUF)") +
+  facet_wrap(~gender) +
+  labs(title = "Mean Income by Occupation, City, and Gender",
+       subtitle = "Darker colors indicate higher mean income",
+       x = "City",
+       y = "Occupation") +
   custom_theme +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        strip.text = element_text(face = "bold"))
+
+# Create a summary table of the top 10 highest earning combinations
+top_earners <- income_by_category %>%
+  arrange(desc(mean_income)) %>%
+  head(10)
+
+kable(top_earners, 
+      caption = "Top 10 Highest Earning Combinations",
+      digits = 0) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                full_width = FALSE)
 ```
 
 # Hypothesis Testing
@@ -266,8 +306,8 @@ plot(model1, col = income_palette[1], pch = 19, cex = 0.7)
 # Fit polynomial regression
 model2 <- lm(income ~ poly(age, 3), data = data)
 
-# Create an interactive plot
-p5 <- ggplot(data, aes(x = age, y = income)) +
+# Create a static plot
+ggplot(data, aes(x = age, y = income)) +
   geom_point(alpha = 0.1, color = income_palette[1]) +
   geom_smooth(method = "lm", formula = y ~ poly(x, 3), 
               color = income_palette[5], fill = income_palette[5], alpha = 0.2) +
@@ -276,8 +316,6 @@ p5 <- ggplot(data, aes(x = age, y = income)) +
        x = "Age",
        y = "Income (HUF)") +
   custom_theme
-
-ggplotly(p5)
 
 # Model comparison
 model_comparison <- data.frame(
