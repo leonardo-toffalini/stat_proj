@@ -163,7 +163,7 @@ cluster_summary <- data_clean %>%
   arrange(mean_income)
 
 cluster_labels <- c("Working Age", "Pension Age", "Unemployed/Young")
-data_clean$income_group <- factor(data_clean$cluster, 
+data_clean$income_group <- factor(data_clean$cluster,
                                  labels = cluster_labels[order(cluster_summary$mean_income)])
 
 ggplot(data_clean, aes(x = age, y = income, color = income_group)) +
@@ -261,7 +261,7 @@ income_by_category <- data %>%
   summarise(
     mean_income = mean(income),
     count = n(),
-    .groups = 'drop'
+    .groups = "drop"
   ) %>%
   arrange(desc(mean_income))
 
@@ -284,10 +284,10 @@ top_earners <- income_by_category %>%
   arrange(desc(mean_income)) %>%
   head(10)
 
-kable(top_earners, 
+kable(top_earners,
       caption = "Top 10 Highest Earning Combinations",
       digits = 0) %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
                 full_width = FALSE)
 ```
 
@@ -343,12 +343,12 @@ for (city in other_cities) {
   city_age <- data$age[data$city == city]
   t_test <- t.test(budapest_age, city_age)
   t_test_results <- rbind(t_test_results,
-                        data.frame(
-                           City = city,
-                           t_statistic = t_test$statistic,
-                           p_value = t_test$p.value,
-                           mean_diff = mean(budapest_age) - mean(city_age)
-                         ))
+                          data.frame(
+                            City = city,
+                            t_statistic = t_test$statistic,
+                            p_value = t_test$p.value,
+                            mean_diff = mean(budapest_age) - mean(city_age)
+                          ))
 }
 
 kable(t_test_results,
@@ -382,15 +382,74 @@ age_by_city <- data %>%
     mean_age = mean(age),
     sd_age = sd(age),
     n = n(),
-    .groups = 'drop'
+    .groups = "drop"
   ) %>%
   arrange(desc(mean_age))
 
-kable(age_by_city, 
+kable(age_by_city,
       caption = "Age Statistics by City",
       digits = 1) %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
                 full_width = FALSE)
+```
+
+### 3. Software Developer Income vs Teacher Income (F-test + t-test)
+
+Let's say that someone was debating whether to pursue a career as a software developer or as a teacher.
+Assuming that the pros and the negatives in both choices cancel out and the only deciding factor remaining is the salary, they might decide on the career path which leads to a higher salary on average.
+Assuming that the two samples are of normal distribution, to test if a software developer has a higher average income than a teacher, we first employ an F-test to test if the variance of the two distributions is the same, then we use a t-test to test if the mean of one of the distributions is statistically significantly higher or lower.
+
+```{r dev_teacher_incomes}
+dev_income <- data$income[data$occupation == "Software Developer"]
+teacher_income <- data$income[data$occupation == "Teacher"]
+```
+
+```{r dev_teacher_income_f_test}
+var_test_result <- var.test(dev_income, teacher_income)
+print(var_test_result)
+```
+
+According to the results, where the p-value (0.8633) is no way near our target of 0.05, we conclude that we did not find significant evidence to state that the two variances are not equal.
+Thus, we can not disregard the null hypothesis that the two variances are equal.
+Note, that this not mean that we found significant evidence that the two variances are the same, but that we did not find strong evidence for the contrary.
+
+According to our preliminary test, we continue with a two sample t-test, with the added presumption that the two variances are equal.
+
+```{r dev_teacher_income_t_test}
+t_test_result <- t.test(dev_income, teacher_income, alternative = "greater", var.equal=TRUE)
+print(t_test_result)
+```
+
+From the results of the t-test we can see that the p-value is vanishingly small (2.2e-16), from which we conclude to disregard the null hypothesis.
+Thus, we state, with statistically significant evidence, that the average income of a software developer is higher than that of a teacher in Hungary.
+
+```{r dev_teacher_income_results}
+income_by_occupation <- data %>%
+  filter(occupation %in% c("Software Developer", "Teacher")) %>%
+  group_by(occupation) %>%
+  summarise(
+    mean_income = mean(income),
+    sd_income = sd(income),
+    n = n(),
+    .groups = "drop"
+  )
+
+kable(income_by_occupation,
+      caption = "Income Statistics by Occupation",
+      digits = 0) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = FALSE)
+```
+
+```{r dev_teacher_income_plot}
+ggplot(data %>% filter(occupation %in% c("Software Developer", "Teacher")),
+       aes(x = occupation, y = income, fill = occupation)) +
+  geom_boxplot(alpha = 0.7) +
+  scale_fill_viridis_d() +
+  labs(title = "Income Distribution: Software Developers vs Teachers",
+       x = "Occupation",
+       y = "Income (HUF)") +
+  custom_theme
 ```
 
 ## Non-parametric Tests
@@ -414,10 +473,12 @@ The visualizations help us understand the nature of these relationships by showi
 
 ```{r chi_squared_test_city}
 data <- data %>%
-  mutate(income_category = cut(income,
-                              breaks = quantile(income, probs = seq(0, 1, 0.25)),
-                              labels = c("Low", "Medium-Low", "Medium-High", "High"),
-                              include.lowest = TRUE))
+  mutate(income_category = cut(
+    income,
+    breaks = quantile(income, probs = seq(0, 1, 0.25)),
+    labels = c("Low", "Medium-Low", "Medium-High", "High"),
+    include.lowest = TRUE)
+  )
 
 city_chi <- chisq.test(table(data$city, data$income_category))
 print(city_chi)
