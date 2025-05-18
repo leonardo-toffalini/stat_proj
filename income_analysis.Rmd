@@ -295,7 +295,7 @@ kable(top_earners,
 
 ## Parametric Tests
 
-### 1. Gender Income Difference (t-test)
+### 1. Gender Income Difference (F-test + t-test)
 
 Previously we have seen from a plot that a man on averages is payed more than a woman.
 To test this result we propose a two sample t-test (assuming that both samples come from a normal distribution), where our nulhypothesisis that the mean male income is equal to the mean female income.
@@ -317,6 +317,93 @@ print(t_test_result)
 
 The above results show that the p-value is way below our target of $0.05$, which means we can state with outmost certainty that we found significant proof that the mean income in the female group is less than the mean income in the male group.
 
+### 2. Age Distribution Across Cities (7 t-tests)
+
+Living in the capital Budapest, it is apparent to see when visiting other cities in Hungary that there are more young people in Budapest than in the province.
+This could be caused by many factors, but certainly one is that Budapest has the most and the best universities in Hungary.
+Thus, many young people from other cities in Hungary, relocate to Budapest to get higher education.
+
+We wish to test if our presumptions are correct, by testing if the mean age across different cities is equal or not.
+To test this, we employ a t-test, with the assumption that the age in every city corresponds to a normal distribution, where we compare the mean age of every city to that of Budapest.
+
+```{r age_t_test}
+# compare each city's mean age with Budapest's mean age
+budapest_age <- data$age[data$city == "Budapest"]
+other_cities <- unique(data$city[data$city != "Budapest"])
+
+t_test_results <- data.frame(
+  City = character(),
+  t_statistic = numeric(),
+  p_value = numeric(),
+  mean_diff = numeric(),
+  stringsAsFactors = FALSE
+)
+
+for (city in other_cities) {
+  city_age <- data$age[data$city == city]
+  t_test <- t.test(budapest_age, city_age)
+  t_test_results <- rbind(t_test_results,
+                        data.frame(
+                           City = city,
+                           t_statistic = t_test$statistic,
+                           p_value = t_test$p.value,
+                           mean_diff = mean(budapest_age) - mean(city_age)
+                         ))
+}
+
+kable(t_test_results,
+      caption = "T-test Results: Comparing Mean Ages with Budapest",
+      digits = 4) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = FALSE)
+```
+
+The above results show that the p-value for any pair is no way near our target of $0.05$.
+Thus we accept the null hypothesis for each test and say that we did not find statistically significant evidence that the mean age of a city is different from the of Budapest.
+
+Moreover, we can visualize the age distribution across cities with a box plot for each city.
+In the following figure we see that it appears to have no difference on the age distribution which city you live in.
+
+```{r age_distribution_across_cities_plot}
+ggplot(data, aes(x = reorder(city, age, FUN = mean), y = age, fill = city)) +
+  geom_boxplot(alpha = 0.7) +
+  scale_fill_viridis_d() +
+  coord_flip() +
+  labs(title = "Age Distribution Across Cities",
+       x = "City",
+       y = "Age") +
+  custom_theme
+```
+
+```{r age_distribution_across_cities_summary}
+age_by_city <- data %>%
+  group_by(city) %>%
+  summarise(
+    mean_age = mean(age),
+    sd_age = sd(age),
+    n = n(),
+    .groups = 'drop'
+  ) %>%
+  arrange(desc(mean_age))
+
+kable(age_by_city, 
+      caption = "Age Statistics by City",
+      digits = 1) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                full_width = FALSE)
+```
+
+## Non-parametric Tests
+
+### 1. Gender Income Distribution (Kolmogorov-Smirnov Test)
+
+```{r gender_ks}
+male_income <- data$income[data$gender == "Male"]
+female_income <- data$income[data$gender == "Female"]
+ks_test <- ks.test(male_income, female_income)
+print(ks_test)
+```
+
 ### 2. Chi-Squared Test for Income Distribution by City
 
 To investigate if there is a significant difference in income between cities we employ a chi-squared test.
@@ -332,7 +419,6 @@ data <- data %>%
                               labels = c("Low", "Medium-Low", "Medium-High", "High"),
                               include.lowest = TRUE))
 
-# Chi-squared test for cities
 city_chi <- chisq.test(table(data$city, data$income_category))
 print(city_chi)
 
@@ -349,20 +435,14 @@ ggplot(data, aes(x = city, fill = income_category)) +
   custom_theme
 ```
 
-The chi-squared test results show a very strong relationship between city and income distribution (X-squared = 2624.1, p-value \< 2.2e-16).
-This extremely small p-value (less than 2.2e-16) indicates that we can reject the null hypothesis with very high confidence.
+The chi-squared test results show a very strong relationship between city and income distribution (p-value \< 2.2e-16).
+This extremely small p-value indicates that we can reject the null hypothesis with very high confidence.
 In other words, there is a statistically significant association between the city where someone works and their income category.
-Looking at the visualization, we can observe that:
-
-1.  Budapest has a notably higher proportion of high-income earners compared to other cities
-
-2.  The distribution of income categories varies significantly across cities
-
-3.  This supports our earlier observations about the economic disparity between Budapest and other cities in Hungary
+Looking at the visualization, we can observe that Budapest has a notably higher proportion of high-income earners compared to other cities, while other cities such as Eger and Miskolc have the majority of their population composed of low-income earners.
 
 ### 3. Chi-Squared Test for Income Distribution by Occupation
 
-To further explore what the connection between income and occupation is, we employ a chi-squared test.
+To further explore the components that make up the income distribution, we employ a chi-squared test to test if there is significant association between the occupation and the income.
 Our null hypothesis is that the distribution of income categories is independent of occupation.
 
 ```{r chi_squared_test_occupation}
@@ -381,33 +461,13 @@ ggplot(data, aes(x = occupation, fill = income_category)) +
   custom_theme
 ```
 
-The chi-squared test results show an extremely strong relationship between occupation and income distribution (X-squared = 2736.5, p-value \< 2.2e-16).
+The chi-squared test results show an extremely strong relationship between occupation and income distribution (p-value \< 2.2e-16).
 This extremely small p-value indicates that we can reject the null hypothesis with very high confidence, meaning there is a statistically significant association between a person's occupation and their income category.
 
 Looking at the visualization, we can observe that: 1.
 Software Developers and Doctors have a much higher proportion of high-income earners compared to other occupations 2.
 Sales Representatives and Drivers tend to have a higher proportion of lower-income categories 3.
 The income distribution varies significantly across different occupations, highlighting the impact of career choice on earning potential
-
-## Non-parametric Tests
-
-### 1. Gender Income Distribution (Kolmogorov-Smirnov Test)
-
-```{r gender_ks}
-# Test if income distributions differ between genders
-male_income <- data$income[data$gender == "Male"]
-female_income <- data$income[data$gender == "Female"]
-ks_test <- ks.test(male_income, female_income)
-print(ks_test)
-```
-
-### 2. Income Distribution by City (Kruskal-Wallis Test)
-
-```{r city_kruskal}
-# Test if income distributions differ between cities
-kruskal_test <- kruskal.test(income ~ city, data = data)
-print(kruskal_test)
-```
 
 # Regression Analysis
 
@@ -429,21 +489,19 @@ ggplot(data %>% filter(age >= 18), aes(x = age, y = income, color = gender)) +
 ## Multiple Linear Regression
 
 ```{r regression}
-# Convert categorical variables to factors
+# convert categorical variables to factors
 data_working_age <- data %>% filter(age >= 18)
 data_working_age$city <- as.factor(data_working_age$city)
 data_working_age$occupation <- as.factor(data_working_age$occupation)
 data_working_age$gender <- as.factor(data_working_age$gender)
 
-# Fit the model
+# fit model
 model1 <- lm(income ~ age + I(age^2) + city + occupation + gender, data = data_working_age)
 
-# Create a beautiful model summary table
 model_summary <- summary(model1)
 kable(tidy(model_summary), caption = "Multiple Linear Regression Results (Working Age Only)") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = FALSE)
 
-# Enhanced model diagnostics
 par(mfrow = c(2,2))
 plot(model1, col = income_palette[1], pch = 19, cex = 0.7)
 ```
@@ -451,10 +509,10 @@ plot(model1, col = income_palette[1], pch = 19, cex = 0.7)
 ## Polynomial Regression for Age-Income Relationship
 
 ```{r polynomial_regression}
-# Fit polynomial regression
+# polynomial regression
 model2 <- lm(income ~ poly(age, 3), data = data_working_age)
 
-# Create a static plot
+# static plot
 ggplot(data_working_age, aes(x = age, y = income)) +
   geom_point(alpha = 0.1, color = income_palette[1]) +
   geom_smooth(method = "lm", formula = y ~ poly(x, 3), 
@@ -465,7 +523,7 @@ ggplot(data_working_age, aes(x = age, y = income)) +
        y = "Income (HUF)") +
   custom_theme
 
-# Model comparison
+# model comparison
 model_comparison <- data.frame(
   Model = c("Multiple Linear", "Polynomial"),
   R_squared = c(summary(model1)$r.squared, summary(model2)$r.squared),
@@ -481,7 +539,6 @@ kable(model_comparison, caption = "Model Comparison (Working Age Only)") %>%
 What is the predicted income of a 35 years old male software developer working in Budapest?
 
 ```{r predictions}
-# Create a sample prediction
 new_data <- data.frame(
   age = 35,
   city = "Budapest",
