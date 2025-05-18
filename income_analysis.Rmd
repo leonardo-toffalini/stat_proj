@@ -493,7 +493,8 @@ ggplot(data, aes(x = city, fill = income_category)) +
        x = "City",
        y = "Proportion",
        fill = "Income Category") +
-  custom_theme
+  custom_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
 The chi-squared test results show a very strong relationship between city and income distribution (p-value \< 2.2e-16).
@@ -519,7 +520,8 @@ ggplot(data, aes(x = occupation, fill = income_category)) +
        x = "Occupation",
        y = "Proportion",
        fill = "Income Category") +
-  custom_theme
+  custom_theme +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
 The chi-squared test results show an extremely strong relationship between occupation and income distribution (p-value \< 2.2e-16).
@@ -535,7 +537,7 @@ The income distribution varies significantly across different occupations, highl
 ## Age vs Income
 
 ```{r age_income_scatter}
-ggplot(data %>% filter(age >= 18), aes(x = age, y = income, color = gender)) +
+ggplot(data, aes(x = age, y = income, color = gender)) +
   geom_point(alpha = 0.3) +
   geom_smooth(method = "loess", se = TRUE) +
   scale_color_viridis_d() +
@@ -551,7 +553,7 @@ ggplot(data %>% filter(age >= 18), aes(x = age, y = income, color = gender)) +
 
 ```{r regression}
 # convert categorical variables to factors
-data_working_age <- data %>% filter(age >= 18)
+data_working_age <- data
 data_working_age$city <- as.factor(data_working_age$city)
 data_working_age$occupation <- as.factor(data_working_age$occupation)
 data_working_age$gender <- as.factor(data_working_age$gender)
@@ -608,6 +610,6 @@ new_data <- data.frame(
 )
 
 # Predict income
-prediction <- predict(model1, newdata = new_data, interval = "prediction")
+prediction <- predict(model2, newdata = new_data, interval = "prediction")
 print(prediction[1])
 ```
